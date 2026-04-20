@@ -1,29 +1,20 @@
-# Feature Extraction (features.py)
+# Características (features.py)
 
-The `features` module implements standard time-domain feature extraction algorithms.
+El módulo `features` contiene funciones para extraer descriptores estadísticos y de energía de señales unidimensionales.
 
-## Functions
-
-### `mean(signal)`
-Calculates the arithmetic mean of the signal.
+## Funciones
 
 ### `rms(signal)`
-Calculates the Root Mean Square (RMS) energy.
-
-### `variance(signal)`
-Calculates the statistical variance of the signal.
+Calcula el valor eficaz (Root Mean Square) de la señal.
 
 ### `zero_crossing_rate(signal)`
-Calculates the rate at which the signal crosses zero.
-
-### `peak_to_peak(signal)`
-Calculates the difference between the maximum and minimum values.
+Calcula la tasa de cruce por cero, útil para identificar el contenido de ruido o ruidos de alta frecuencia.
 
 ### `crest_factor(signal)`
-Calculates the ratio of peak magnitude to RMS energy.
+Calcula la relación entre la magnitud pico y la energía RMS.
 
 ### `first_derivative(signal)` / `second_derivative(signal)`
-Calculates the numerical derivatives of the signal.
+Calcula las derivadas numéricas de la señal.
 
 ### `frame_feature_vector(frame: list[float]) -> dict`
-Returns a dictionary containing all basic features for a given frame.
+Retorna un diccionario que contiene todas las características básicas para una trama (frame) dada.

@@ -1,17 +1,17 @@
-# Bridge & Signature (bridge.py)
+# Puente y Firma (bridge.py)
 
-The `bridge` module connects low-level features to high-level descriptors and representations.
+El módulo `bridge` conecta características de bajo nivel con descriptores y representaciones de alto nivel.
 
-## Classes
+## Clases
 
 ### `SignalSignature`
-A comprehensive dataclass capturing the entire state of a signal analysis.
-Includes dimensions, mean frame features, spectral properties, event counts, and derivatives.
+Una dataclass completa que captura todo el estado del análisis de una señal.
+Incluye dimensiones, promedio de características por trama, propiedades espectrales, conteo de eventos y derivadas.
 
-## Functions
+## Funciones
 
 ### `signal_signature(...) -> SignalSignature`
-Generates a full `SignalSignature` from a raw signal. This is the primary high-level API for signal characterization.
+Genera una `SignalSignature` completa a partir de una señal en bruto. Esta es la API principal de alto nivel para la caracterización de señales.
 
 ### `signature_to_glyph_vector(sig: SignalSignature) -> list[float]`
-Compresses a `SignalSignature` into a flat list of floats, ideal for similarity matching, clustering, or visualization.
+Comprime una `SignalSignature` en una lista plana de números flotantes, ideal para comparación por similitud, agrupamiento (clustering) o visualización.

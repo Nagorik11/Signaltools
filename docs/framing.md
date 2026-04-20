@@ -1,6 +1,6 @@
-# Framing & Normalization
+# Ventaneo y Normalización (framing.py)
 
-Herramientas para la preparación de señales antes del análisis espectral o de características.
+Herramientas para la preparación de señales antes del análisis espectral o de extracción de características.
 
 ## Configuración
 
@@ -11,7 +11,7 @@ Utiliza la dataclass `FrameConfig` para definir:
 ## Funciones
 
 ### `frame_signal(signal, cfg)`
-Divide una señal unidimensional en una lista de frames (ventanas) solapadas.
+Divide una señal unidimensional en una lista de tramas (frames) solapadas.
 
 ### `normalize_signal(signal)`
 Escala la señal al rango [-1.0, 1.0] basándose en el valor absoluto máximo.

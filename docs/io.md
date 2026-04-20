@@ -1,14 +1,11 @@
-# IO & Buffer Management
+# Entrada y Salida (I/O)
 
-Módulo encargado de la lectura y escritura de archivos de datos y audio.
+Manejo de archivos y buffers de datos para `signaltools`.
 
-## Funciones Principales
+## Funciones
 
-### `read_audio_file(path, sample_rate=44100)`
-Utiliza FFmpeg para decodificar cualquier formato de audio (MP3, WAV, MP4) a un buffer de bytes raw (PCM 16-bit).
-
-### `write_wav(path, signal, sample_rate=44100)`
-Guarda una lista de valores numéricos como un archivo WAV mono de 16 bits. Escala automáticamente la señal basándose en el valor máximo.
+### `read_wav(path)`
+Lee archivos de audio en formato WAV y los convierte en una lista de flotantes normalizados.
 
 ### `read_signal_file(path)`
 Lectura genérica de archivos binarios en un objeto `SignalBuffer`.
@@ -19,4 +16,4 @@ Intenta interpretar un buffer de bytes como diferentes tipos de datos numéricos
 ## Clases
 
 ### `SignalBuffer`
-Contenedor para datos raw que incluye la ruta del archivo y métodos de previsualización hexadecimal.
+Contenedor para datos en bruto que incluye la ruta del archivo y métodos de previsualización hexadecimal.
