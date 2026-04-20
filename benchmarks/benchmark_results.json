@@ -1,0 +1,68 @@
+{
+  "environment": {
+    "sample_rate": 4000,
+    "python_entry": "signaltools/benchmarks/run_benchmarks.py"
+  },
+  "benchmarks": {
+    "1k": {
+      "advanced_analysis": {
+        "repeat": 2,
+        "mean_ms": 113.4545,
+        "min_ms": 109.7279,
+        "max_ms": 117.181
+      },
+      "fingerprint": {
+        "repeat": 2,
+        "mean_ms": 5.6195,
+        "min_ms": 5.5625,
+        "max_ms": 5.6765
+      },
+      "spectrogram": {
+        "repeat": 2,
+        "mean_ms": 0.2498,
+        "min_ms": 0.2429,
+        "max_ms": 0.2568
+      }
+    },
+    "2k": {
+      "advanced_analysis": {
+        "repeat": 2,
+        "mean_ms": 158.3144,
+        "min_ms": 140.0655,
+        "max_ms": 176.5634
+      },
+      "fingerprint": {
+        "repeat": 2,
+        "mean_ms": 10.9413,
+        "min_ms": 10.8834,
+        "max_ms": 10.9991
+      },
+      "spectrogram": {
+        "repeat": 2,
+        "mean_ms": 0.5289,
+        "min_ms": 0.5083,
+        "max_ms": 0.5496
+      }
+    },
+    "4k": {
+      "advanced_analysis": {
+        "repeat": 2,
+        "mean_ms": 218.9889,
+        "min_ms": 215.2267,
+        "max_ms": 222.7511
+      },
+      "fingerprint": {
+        "repeat": 2,
+        "mean_ms": 23.8085,
+        "min_ms": 23.6876,
+        "max_ms": 23.9293
+      },
+      "spectrogram": {
+        "repeat": 2,
+        "mean_ms": 1.0226,
+        "min_ms": 0.9107,
+        "max_ms": 1.1346
+      }
+    }
+  }
+}
