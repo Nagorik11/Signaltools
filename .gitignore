@@ -1,5 +1,5 @@
 ```
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -8,18 +8,34 @@ __pycache__/
 # Build artifacts
 build/
 dist/
-*.egg-info/
 
-# Dependencies
-.venv/
+# Virtual environments
 venv/
+.venv/
 env/
-.env
 
 # Logs
 *.log
 
-# OS generated files
+# Temporary files
+*.tmp
+*.swp
+
+# Environment files
+.env
+.env.local
+*.env.*
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Editors
+.vscode/
+.idea/
+
+# OS
 .DS_Store
 Thumbs.db
 ```
