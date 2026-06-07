@@ -122,6 +122,23 @@ from .bridge import (
 )
 from .bitlayer import analyze_bitlayer, build_bit_signature, BitSignature
 
+# Metrics and quality assessment
+from .metrics import (
+    QualityMetrics,
+    mse,
+    rmse,
+    mae,
+    psnr,
+    ssim,
+    ncc,
+    snr,
+    isnr,
+    vif,
+    compute_all_metrics,
+    compare_signals,
+    print_metrics_report,
+)
+
 # Pipeline and manager
 from .pipeline import (
     AdvancedSignalAnalysis,
@@ -454,6 +471,11 @@ __all__ = [
     "signal_signature", "SignalSignature", "signature_to_glyph_vector", "LayeredSignalAnalysis",
     "analyze_signal_layered", "reconstruct_signal_from_signature",
     "analyze_bitlayer", "build_bit_signature", "BitSignature",
+    
+    # Metrics and quality assessment
+    "QualityMetrics",
+    "mse", "rmse", "mae", "psnr", "ssim", "ncc", "snr", "isnr", "vif",
+    "compute_all_metrics", "compare_signals", "print_metrics_report",
     
     # Pipeline
     "AdvancedSignalAnalysis", "analyze_signal_advanced",
