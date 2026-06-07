@@ -123,7 +123,15 @@ from .bridge import (
 from .bitlayer import analyze_bitlayer, build_bit_signature, BitSignature
 
 # Pipeline and manager
-from .pipeline import AdvancedSignalAnalysis, analyze_signal_advanced
+from .pipeline import (
+    AdvancedSignalAnalysis,
+    analyze_signal_advanced,
+    ProcessingPipeline,
+    PipelineStep,
+    PipelineResult,
+    create_analysis_pipeline,
+    create_preprocessing_pipeline,
+)
 
 # Graph signal processing
 from .graph_filters import (
@@ -449,6 +457,8 @@ __all__ = [
     
     # Pipeline
     "AdvancedSignalAnalysis", "analyze_signal_advanced",
+    "ProcessingPipeline", "PipelineStep", "PipelineResult",
+    "create_analysis_pipeline", "create_preprocessing_pipeline",
     
     # Graph signal processing
     "graph_laplacian", "graph_fourier_basis", "graph_filter_signal", "graph_polynomial_filter",
