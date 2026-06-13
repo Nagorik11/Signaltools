@@ -566,9 +566,6 @@ def create_analysis_pipeline(sample_rate: int = 44100) -> ProcessingPipeline:
         description="Remove DC offset"
     )
     
-    # Note: For actual spectral analysis, you'd need to adapt these
-    # to work in a pipeline context (they expect different signatures)
-    
     return pipeline
 
 
@@ -595,7 +592,6 @@ def create_preprocessing_pipeline(
     if detrend:
         pipeline.add_step("detrend", detrend_mean)
     
-    # Add filtering if params provided
     if filter_params:
         from .filters import lowpass_filter
         pipeline.add_step(
@@ -607,6 +603,363 @@ def create_preprocessing_pipeline(
     return pipeline
 
 
+# === Spectral Analysis Pipelines ===
+
+def _wrap_spectral_result(func, sample_rate: int, context_key: str):
+    """Helper: execute a spectral function and store result in context."""
+    from functools import wraps
+    
+    @wraps(func)
+    def wrapper(signal, _context=None):
+        result = func(signal, sample_rate=sample_rate)
+        if _context is not None:
+            _context[context_key] = result
+        return signal
+    return wrapper
+
+
+def create_spectral_feature_pipeline(sample_rate: int = 44100) -> ProcessingPipeline:
+    """Pipeline that extracts spectral features and stores them in context.
+    
+    Steps: normalize → detrend → centroid → bandwidth → rolloff → pitch
+    
+    Args:
+        sample_rate: Sample rate in Hz
+        
+    Returns:
+        Configured ProcessingPipeline
+    """
+    from .spectral import spectral_centroid, spectral_bandwidth, spectral_rolloff, estimate_pitch
+    
+    pipeline = ProcessingPipeline(name="spectral_features")
+    
+    pipeline.add_step("normalize", normalize_signal, description="Normalize amplitude")
+    pipeline.add_step("detrend", detrend_mean, description="Remove DC offset")
+    pipeline.add_step(
+        "centroid", _wrap_spectral_result(spectral_centroid, sample_rate, "centroid_hz"),
+        description="Spectral centroid",
+        _context=None
+    )
+    pipeline.add_step(
+        "bandwidth", _wrap_spectral_result(spectral_bandwidth, sample_rate, "bandwidth_hz"),
+        description="Spectral bandwidth",
+        _context=None
+    )
+    pipeline.add_step(
+        "rolloff", _wrap_spectral_result(spectral_rolloff, sample_rate, "rolloff_hz"),
+        description="Spectral rolloff",
+        _context=None
+    )
+    pipeline.add_step(
+        "pitch", _wrap_spectral_result(estimate_pitch, sample_rate, "pitch_hz"),
+        description="Fundamental frequency estimation",
+        _context=None
+    )
+    
+    return pipeline
+
+
+def create_spectrogram_pipeline(
+    sample_rate: int = 44100,
+    frame_size: int = 256,
+    hop_size: int = 128,
+    window: str = "hann",
+    log_scale: bool = True,
+) -> ProcessingPipeline:
+    """Pipeline that computes a spectrogram from a signal.
+    
+    Steps: normalize → detrend → spectrogram (stored in context)
+    
+    Args:
+        sample_rate: Sample rate in Hz
+        frame_size: FFT frame size
+        hop_size: Hop size between frames
+        window: Window type ('hann', 'hamming', 'blackman', 'rectangular')
+        log_scale: Apply dB scale if True
+        
+    Returns:
+        Configured ProcessingPipeline
+    """
+    from .spectral import spectrogram_matrix
+    
+    pipeline = ProcessingPipeline(name="spectrogram")
+    
+    pipeline.add_step("normalize", normalize_signal, description="Normalize amplitude")
+    pipeline.add_step("detrend", detrend_mean, description="Remove DC offset")
+    
+    def _compute_spectrogram(signal, _context=None):
+        spec = spectrogram_matrix(
+            signal,
+            frame_size=frame_size,
+            hop_size=hop_size,
+            window=window,
+            log_scale=log_scale,
+        )
+        if _context is not None:
+            _context["spectrogram"] = spec
+            _context["spectrogram_shape"] = [len(spec), len(spec[0]) if spec else 0]
+        return spec
+    
+    pipeline.add_step(
+        "spectrogram", _compute_spectrogram,
+        description=f"Spectrogram ({frame_size} frame, {hop_size} hop)",
+        _context=None
+    )
+    
+    return pipeline
+
+
+def create_band_energy_pipeline(
+    sample_rate: int = 44100,
+    bands: Optional[list[tuple[str, float, float]]] = None,
+) -> ProcessingPipeline:
+    """Pipeline that computes energy in multiple frequency bands.
+    
+    Default bands: sub-bass (0-60), bass (60-250), low-mid (250-500),
+    mid (500-2000), high-mid (2000-4000), presence (4000-6000), brilliance (6000-20000)
+    
+    Steps: normalize → detrend → band energies (stored in context)
+    
+    Args:
+        sample_rate: Sample rate in Hz
+        bands: List of (name, low_hz, high_hz) tuples
+        
+    Returns:
+        Configured ProcessingPipeline
+    """
+    from .spectral import band_energy
+    
+    if bands is None:
+        bands = [
+            ("sub_bass", 0.0, 60.0),
+            ("bass", 60.0, 250.0),
+            ("low_mid", 250.0, 500.0),
+            ("mid", 500.0, 2000.0),
+            ("high_mid", 2000.0, 4000.0),
+            ("presence", 4000.0, 6000.0),
+            ("brilliance", 6000.0, 20000.0),
+        ]
+    
+    pipeline = ProcessingPipeline(name="band_energy")
+    
+    pipeline.add_step("normalize", normalize_signal, description="Normalize amplitude")
+    pipeline.add_step("detrend", detrend_mean, description="Remove DC offset")
+    
+    def _compute_band_energies(signal, _context=None):
+        energies = {}
+        for name, low, high in bands:
+            energies[name] = round(band_energy(signal, sample_rate, low, high), 6)
+        if _context is not None:
+            _context["band_energies"] = energies
+        return signal
+    
+    pipeline.add_step(
+        "band_energies", _compute_band_energies,
+        description=f"Energy in {len(bands)} frequency bands",
+        _context=None
+    )
+    
+    return pipeline
+
+
+def create_full_spectral_pipeline(sample_rate: int = 44100) -> ProcessingPipeline:
+    """Complete spectral analysis pipeline combining features, spectrogram, and band energy.
+    
+    Stores all results in context under 'spectral_features', 'spectrogram', and 'band_energies'.
+    Final output is the spectrogram matrix.
+    
+    Args:
+        sample_rate: Sample rate in Hz
+        
+    Returns:
+        Configured ProcessingPipeline
+    """
+    from .spectral import (
+        spectral_centroid, spectral_bandwidth, spectral_rolloff,
+        estimate_pitch, band_energy, spectrogram_matrix,
+    )
+    
+    pipeline = ProcessingPipeline(name="full_spectral_analysis")
+    
+    pipeline.add_step("normalize", normalize_signal, description="Normalize amplitude")
+    pipeline.add_step("detrend", detrend_mean, description="Remove DC offset")
+    
+    # Single spectral feature extraction step
+    def _compute_features(signal, _context=None):
+        features = {
+            "centroid_hz": round(spectral_centroid(signal, sample_rate=sample_rate), 6),
+            "bandwidth_hz": round(spectral_bandwidth(signal, sample_rate=sample_rate), 6),
+            "rolloff_hz": round(spectral_rolloff(signal, sample_rate=sample_rate), 6),
+            "pitch_hz": round(estimate_pitch(signal, sample_rate=sample_rate), 6),
+        }
+        if _context is not None:
+            _context["spectral_features"] = features
+        return signal
+    
+    pipeline.add_step(
+        "features", _compute_features,
+        description="Spectral centroid, bandwidth, rolloff, pitch",
+        _context=None
+    )
+    
+    # Band energy
+    bands = [
+        ("sub_bass", 0.0, 60.0),
+        ("bass", 60.0, 250.0),
+        ("low_mid", 250.0, 500.0),
+        ("mid", 500.0, 2000.0),
+        ("high_mid", 2000.0, 4000.0),
+        ("presence", 4000.0, 6000.0),
+        ("brilliance", 6000.0, 20000.0),
+    ]
+    
+    def _compute_band_energies(signal, _context=None):
+        energies = {}
+        for name, low, high in bands:
+            energies[name] = round(band_energy(signal, sample_rate, low, high), 6)
+        if _context is not None:
+            _context["band_energies"] = energies
+        return signal
+    
+    pipeline.add_step(
+        "band_energies", _compute_band_energies,
+        description=f"Energy in {len(bands)} bands",
+        _context=None
+    )
+    
+    # Spectrogram
+    def _compute_spectrogram(signal, _context=None):
+        spec = spectrogram_matrix(signal, frame_size=256, hop_size=128)
+        if _context is not None:
+            _context["spectrogram"] = spec
+            _context["spectrogram_shape"] = [len(spec), len(spec[0]) if spec else 0]
+        return spec
+    
+    pipeline.add_step(
+        "spectrogram", _compute_spectrogram,
+        description="Spectrogram (256 frame, 128 hop)",
+        _context=None
+    )
+    
+    # Aggregate summary
+    def _aggregate(signal, _context=None):
+        if _context is None:
+            return signal
+        features = _context.get("spectral_features", {})
+        _context["summary"] = {
+            **features,
+            "band_energies": _context.get("band_energies"),
+            "spectrogram_shape": _context.get("spectrogram_shape"),
+        }
+        return signal
+    
+    pipeline.add_step("aggregate", _aggregate, description="Aggregate spectral summary", _context=None)
+    
+    return pipeline
+
+
+def create_stft_analysis_pipeline(
+    sample_rate: int = 44100,
+    frame_size: int = 256,
+    hop_size: int = 128,
+) -> ProcessingPipeline:
+    """Pipeline for STFT-based time-frequency analysis.
+    
+    Steps: normalize → detrend → STFT → spectral features per frame (stored in context)
+    Final output is the STFT magnitude matrix.
+    
+    Args:
+        sample_rate: Sample rate in Hz
+        frame_size: FFT frame size
+        hop_size: Hop size between frames
+        
+    Returns:
+        Configured ProcessingPipeline
+    """
+    from .spectral import stft, spectral_centroid
+    
+    pipeline = ProcessingPipeline(name="stft_analysis")
+    
+    pipeline.add_step("normalize", normalize_signal, description="Normalize amplitude")
+    pipeline.add_step("detrend", detrend_mean, description="Remove DC offset")
+    
+    def _compute_stft(signal, _context=None):
+        spec = stft(signal, frame_size=frame_size, hop_size=hop_size)
+        if _context is not None:
+            _context["stft_matrix"] = spec
+            _context["stft_shape"] = [len(spec), len(spec[0]) if spec else 0]
+        return spec
+    
+    pipeline.add_step(
+        "stft", _compute_stft,
+        description=f"STFT ({frame_size} frame, {hop_size} hop)",
+        _context=None
+    )
+    
+    return pipeline
+
+
+def create_metrics_pipeline(sample_rate: int = 44100) -> ProcessingPipeline:
+    """Pipeline that computes comprehensive signal metrics.
+
+    Computes: RMS, Energy, Power, SNR, Dominant Frequency, Bandwidth,
+    PSD, Variance, Autocorrelation, Spectral Entropy.
+
+    All metrics stored in context under 'metrics'. Final output is
+    the preprocessed signal (pass-through).
+
+    Args:
+        sample_rate: Sample rate in Hz
+
+    Returns:
+        Configured ProcessingPipeline
+    """
+    from .spectral import (
+        dominant_frequency, spectral_bandwidth, power_spectral_density,
+        spectral_entropy, estimate_snr, autocorrelation,
+    )
+    from .features import rms, signal_energy, signal_power, variance
+
+    pipeline = ProcessingPipeline(name="metrics")
+
+    pipeline.add_step("normalize", normalize_signal, description="Normalize amplitude")
+    pipeline.add_step("detrend", detrend_mean, description="Remove DC offset")
+
+    def _compute_metrics(signal, _context=None):
+        signal_len = len(signal)
+        metrics = {
+            "rms": round(rms(signal), 6),
+            "energy": round(signal_energy(signal), 6),
+            "power": round(signal_power(signal), 6),
+            "variance": round(variance(signal), 6),
+            "snr_db": estimate_snr(signal),
+            "dominant_freq_hz": round(dominant_frequency(signal, sample_rate), 6),
+            "bandwidth_hz": round(spectral_bandwidth(signal, sample_rate), 6),
+            "spectral_entropy": round(spectral_entropy(signal), 6),
+            "n_samples": signal_len,
+            "sample_rate": sample_rate,
+        }
+        freqs, psd = power_spectral_density(signal, sample_rate)
+        metrics["psd_freqs"] = [round(f, 4) for f in freqs]
+        metrics["psd_values"] = [round(p, 10) for p in psd]
+        metrics["psd_peak"] = round(max(psd), 10)
+
+        ac = autocorrelation(signal, normalize=True)
+        metrics["autocorr"] = [round(v, 6) for v in ac[:32]]
+
+        if _context is not None:
+            _context["metrics"] = metrics
+        return signal
+
+    pipeline.add_step(
+        "metrics", _compute_metrics,
+        description="RMS, Energy, Power, SNR, Dominant Freq, Bandwidth, PSD, Variance, Autocorrelation, Entropy",
+        _context=None
+    )
+
+    return pipeline
+
+
 __all__ = [
     "AdvancedSignalAnalysis",
     "analyze_signal_advanced",
@@ -614,5 +967,11 @@ __all__ = [
     "PipelineResult",
     "ProcessingPipeline",
     "create_analysis_pipeline",
-    "create_preprocessing_pipeline"
+    "create_preprocessing_pipeline",
+    "create_spectral_feature_pipeline",
+    "create_spectrogram_pipeline",
+    "create_band_energy_pipeline",
+    "create_full_spectral_pipeline",
+    "create_stft_analysis_pipeline",
+    "create_metrics_pipeline",
 ]

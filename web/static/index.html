@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignalTools - Análisis Espectral</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>SignalTools</h1>
+  <p class="subtitle">Pipeline de análisis espectral - entrada, procesamiento e interpretación</p>
+  <div class="nav-bar" style="margin-top:0.6rem">
+    <a href="/" class="active">Analizador de señales</a>
+    <a href="/wifi">WiFi</a>
+  </div>
+</header>
+
+<main>
+  <!-- Input Section -->
+  <section id="input-section" class="card">
+    <h2>Entrada de señal</h2>
+    <div class="input-tabs">
+      <button class="tab-btn active" data-tab="manual">Manual</button>
+      <button class="tab-btn" data-tab="file">Archivo</button>
+      <button class="tab-btn" data-tab="demo">Demo</button>
+    </div>
+
+    <div id="tab-manual" class="tab-content active">
+      <label for="signal-input">Señal (valores separados por coma):</label>
+      <textarea id="signal-input" rows="4" placeholder="0.1, 0.5, -0.2, 0.8, -0.1, 0.4, ..."></textarea>
+    </div>
+
+    <div id="tab-file" class="tab-content">
+      <label for="file-input">Cargar archivo JSON o WAV:</label>
+      <input type="file" id="file-input" accept=".json,.wav,.txt">
+      <p class="hint">JSON: arreglo de números bajo clave "signal" | WAV: audio mono</p>
+    </div>
+
+    <div id="tab-demo" class="tab-content">
+      <p>Generar señal sintética de prueba:</p>
+      <div class="param-row">
+        <label>Frecuencia 1 (Hz):</label>
+        <input type="number" id="demo-freq1" value="120" min="1" max="5000">
+        <label>Amplitud 1:</label>
+        <input type="number" id="demo-amp1" value="0.7" min="0" max="1" step="0.1">
+      </div>
+      <div class="param-row">
+        <label>Frecuencia 2 (Hz):</label>
+        <input type="number" id="demo-freq2" value="280" min="1" max="5000">
+        <label>Amplitud 2:</label>
+        <input type="number" id="demo-amp2" value="0.25" min="0" max="1" step="0.1">
+      </div>
+      <div class="param-row">
+        <label>Ruido:</label>
+        <input type="number" id="demo-noise" value="0.05" min="0" max="1" step="0.01">
+        <label>Duración (samples):</label>
+        <input type="number" id="demo-length" value="2000" min="64" max="100000">
+      </div>
+      <button id="btn-generate-demo" class="btn btn-primary">Generar señal</button>
+    </div>
+
+    <div class="params-bar">
+      <div class="param-row">
+        <label>Sample rate (Hz):</label>
+        <input type="number" id="sample-rate" value="2000" min="100" max="192000">
+        <label>Frame size:</label>
+        <input type="number" id="frame-size" value="256" min="16" max="4096">
+        <label>Hop size:</label>
+        <input type="number" id="hop-size" value="128" min="8" max="2048">
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button id="btn-analyze" class="btn btn-primary" disabled>Analizar señal</button>
+      <span id="signal-status" class="status">Esperando entrada...</span>
+    </div>
+  </section>
+
+  <!-- Signal Preview -->
+  <section id="preview-section" class="card hidden">
+    <h2>Señal</h2>
+    <canvas id="signal-canvas" height="200"></canvas>
+    <p class="hint" id="signal-info"></p>
+  </section>
+
+  <!-- Results Grid -->
+  <section id="results-section" class="hidden">
+    <div class="results-grid">
+
+      <!-- Metrics -->
+      <div class="card result-card">
+        <h2>Métricas temporales</h2>
+        <div class="metrics-grid" id="metrics-display"></div>
+      </div>
+
+      <!-- Spectral -->
+      <div class="card result-card">
+        <h2>Características espectrales</h2>
+        <div class="metrics-grid" id="spectral-display"></div>
+      </div>
+
+      <!-- Waveform -->
+      <div class="card result-card wide">
+        <h2>Forma de onda temporal</h2>
+        <canvas id="waveform-canvas" height="200"></canvas>
+        <div class="waveform-stats" id="waveform-stats"></div>
+      </div>
+
+      <!-- FFT (Magnitude + Phase combined) -->
+      <div class="card result-card wide">
+        <h2>FFT — Transformada de Fourier</h2>
+        <div class="fft-layout">
+          <div class="fft-panel">
+            <h3>Magnitud</h3>
+            <canvas id="spectrum-canvas" height="180"></canvas>
+            <div class="spectrum-legend" id="spectrum-legend"></div>
+          </div>
+          <div class="fft-panel">
+            <h3>Fase</h3>
+            <canvas id="phase-canvas" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Peaks -->
+      <div class="card result-card">
+        <h2>Picos espectrales</h2>
+        <div id="peaks-list" class="peaks-list"></div>
+      </div>
+
+      <!-- PSD Plot -->
+      <div class="card result-card wide">
+        <h2>Espectro de potencia (PSD)</h2>
+        <canvas id="psd-canvas" height="200"></canvas>
+      </div>
+
+      <!-- Spectrogram -->
+      <div class="card result-card wide">
+        <h2>Espectrograma</h2>
+        <canvas id="spec-canvas" height="250"></canvas>
+      </div>
+
+      <!-- Autocorrelation -->
+      <div class="card result-card">
+        <h2>Autocorrelación</h2>
+        <canvas id="ac-canvas" height="180"></canvas>
+      </div>
+
+      <!-- Radar -->
+      <div class="card result-card wide">
+        <h2>Radar de métricas</h2>
+        <div class="radar-container">
+          <canvas id="radar-canvas" height="250"></canvas>
+          <div class="radar-legend" id="radar-legend"></div>
+        </div>
+      </div>
+
+      <!-- Envelope -->
+      <div class="card result-card wide">
+        <h2>Envolvente (Hilbert)</h2>
+        <canvas id="envelope-canvas" height="180"></canvas>
+        <p class="hint">Amplitud instantánea obtenida vía transformada de Hilbert</p>
+      </div>
+
+      <!-- Cepstrum -->
+      <div class="card result-card wide">
+        <h2>Cepstrum</h2>
+        <canvas id="cepstrum-canvas" height="180"></canvas>
+        <p class="hint">iFFT del log-espectro — los picos revelan periodicidad armónica (pitch, formantes, eco)</p>
+      </div>
+
+      <!-- Wavelet Packet -->
+      <div class="card result-card wide">
+        <h2>Wavelet Packet — Energía por nodo</h2>
+        <canvas id="wavelet-canvas" height="200"></canvas>
+        <div class="wavelet-meta" id="wavelet-meta"></div>
+      </div>
+
+      <!-- Mel Spectrogram -->
+      <div class="card result-card wide">
+        <h2>Espectrograma Mel</h2>
+        <canvas id="mel-canvas" height="180"></canvas>
+        <p class="hint">Escala perceptual Mel (26 bandas) — mejor resolución en bajas frecuencias</p>
+      </div>
+
+      <!-- MFCC -->
+      <div class="card result-card">
+        <h2>MFCC</h2>
+        <canvas id="mfcc-canvas" height="180"></canvas>
+        <p class="hint">13 coeficientes cepstrales en escala Mel</p>
+      </div>
+
+      <!-- Chromagram -->
+      <div class="card result-card">
+        <h2>Cromagrama</h2>
+        <canvas id="chroma-canvas" height="180"></canvas>
+        <p class="hint">Distribución de energía en las 12 clases de tono</p>
+      </div>
+
+      <!-- Neuro: Diffusion MRI -->
+      <div class="card result-card wide neuro-section hidden">
+        <h2>RM de difusión — DTI</h2>
+        <p class="hint">Volumen sintético de 3D tensor — haciendo clic en "Analizar" se genera y procesa automáticamente</p>
+        <div class="neuro-params">
+          <label>FA:</label>
+          <input type="number" id="neuro-fa" value="0.7" min="0.1" max="0.95" step="0.05">
+          <label>MD (×10⁻⁴):</label>
+          <input type="number" id="neuro-md" value="7" min="1" max="20" step="1">
+          <label>Dirección fibra:</label>
+          <select id="neuro-dir">
+            <option value="0,1,0">Anterior-Posterior (Y)</option>
+            <option value="1,0,0">Izquierda-Derecha (X)</option>
+            <option value="0,0,1">Superior-Inferior (Z)</option>
+            <option value="0,0.707,0.707">Oblicua 45°</option>
+          </select>
+        </div>
+      </div>
+      <div class="card result-card neuro-section hidden">
+        <h2>Mapa de FA</h2>
+        <canvas id="fa-canvas" height="220"></canvas>
+        <div class="neuro-meta" id="fa-meta"></div>
+      </div>
+      <div class="card result-card neuro-section hidden">
+        <h2>Mapa de FA direccional (color)</h2>
+        <canvas id="color-fa-canvas" height="220"></canvas>
+        <p class="hint">R=LR, G=AP, B=SI — intensidad = FA</p>
+      </div>
+      <div class="card result-card neuro-section hidden">
+        <h2>Índices de forma tensorial</h2>
+        <canvas id="shape-canvas" height="220"></canvas>
+        <p class="hint">CL (lineal) · CP (planar) · CS (esférica) — modo y VR en metadatos</p>
+        <div class="neuro-meta" id="shape-meta"></div>
+      </div>
+      <div class="card result-card wide neuro-section hidden">
+        <h2>Tractografía — Streamlines</h2>
+        <canvas id="tract-canvas" height="250"></canvas>
+        <div class="neuro-meta" id="tract-meta"></div>
+        <div class="neuro-meta" id="fiber-stats-meta"></div>
+      </div>
+      <div class="card result-card neuro-section hidden">
+        <h2>Histograma de longitudes</h2>
+        <canvas id="fiber-hist-canvas" height="180"></canvas>
+        <p class="hint">Distribución de longitudes de fibras (mm)</p>
+      </div>
+      <div class="card result-card neuro-section hidden">
+        <h2>Matriz de conectividad</h2>
+        <canvas id="connectivity-canvas" height="220"></canvas>
+        <p class="hint">Conexiones normalizadas entre regiones</p>
+      </div>
+      <div class="card result-card neuro-section hidden">
+        <h2>Cluster de fibras</h2>
+        <canvas id="cluster-canvas" height="220"></canvas>
+        <p class="hint">Fibras coloreadas por cluster (agrupamiento por extremos)</p>
+      </div>
+
+      <!-- Interpretation -->
+      <div class="card result-card wide">
+        <h2>Interpretación</h2>
+        <div id="interpretation" class="interpretation"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Loading overlay -->
+  <div id="loading" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>Procesando...</p>
+  </div>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

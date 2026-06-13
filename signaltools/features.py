@@ -54,6 +54,10 @@ def signal_energy(signal: list[float]) -> float:
     return float(sum(x * x for x in signal)) if signal else 0.0
 
 
+def signal_power(signal: list[float]) -> float:
+    return signal_energy(signal) / len(signal) if signal else 0.0
+
+
 def waveform_length(signal: list[float]) -> float:
     return float(sum(abs(signal[i + 1] - signal[i]) for i in range(len(signal) - 1))) if len(signal) >= 2 else 0.0
 
@@ -120,6 +124,7 @@ __all__ = [
     "mean",
     "rms",
     "variance",
+    "signal_power",
     "stddev",
     "median",
     "median_abs_deviation",

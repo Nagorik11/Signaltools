@@ -166,6 +166,75 @@ def estimate_pitch(signal: list[float] | list[int], sample_rate: int = 44100, mi
     return float(sample_rate / lag) if lag > 0 else 0.0
 
 
+def dominant_frequency(signal: list[float] | list[int], sample_rate: int = 44100) -> float:
+    s = _safe_array(signal)
+    if len(s) == 0:
+        return 0.0
+    mag = np.abs(np.fft.rfft(s))
+    freqs = np.fft.rfftfreq(len(s), d=1.0 / sample_rate)
+    idx = int(np.argmax(mag))
+    return float(freqs[idx])
+
+
+def power_spectral_density(
+    signal: list[float] | list[int],
+    sample_rate: int = 44100,
+    window: str = "hann",
+    nperseg: int = 256,
+) -> tuple[list[float], list[float]]:
+    s = _safe_array(signal)
+    if len(s) < nperseg:
+        fs = np.fft.rfftfreq(len(s), d=1.0 / sample_rate)
+        psd = (np.abs(np.fft.rfft(s)) ** 2) / (sample_rate * len(s))
+        return fs.tolist(), (2.0 * psd).tolist()
+    if window == "hann":
+        w = np.hanning(nperseg)
+    elif window == "hamming":
+        w = np.hamming(nperseg)
+    elif window == "blackman":
+        w = np.blackman(nperseg)
+    else:
+        w = np.ones(nperseg)
+    scale = 1.0 / (sample_rate * np.sum(w ** 2))
+    psd_avg = None
+    count = 0
+    for start in range(0, len(s) - nperseg + 1, nperseg // 2):
+        segment = s[start:start + nperseg] * w
+        mag_sq = np.abs(np.fft.rfft(segment)) ** 2
+        psd_seg = mag_sq * scale
+        if psd_avg is None:
+            psd_avg = psd_seg
+        else:
+            psd_avg += psd_seg
+        count += 1
+    psd_avg = psd_avg / count if count > 0 else psd_avg
+    freqs = np.fft.rfftfreq(nperseg, d=1.0 / sample_rate)
+    return freqs.tolist(), (2.0 * psd_avg).tolist()
+
+
+def spectral_entropy(signal: list[float] | list[int]) -> float:
+    s = _safe_array(signal)
+    if len(s) < 2:
+        return 0.0
+    mag = np.abs(np.fft.rfft(s))
+    psd = mag ** 2
+    psd_norm = psd / np.sum(psd) if np.sum(psd) > 0 else psd
+    entropy = -np.sum(psd_norm * np.log2(psd_norm + 1e-12))
+    return float(entropy)
+
+
+def estimate_snr(signal: list[float] | list[int]) -> float:
+    s = _safe_array(signal)
+    if len(s) < 2:
+        return 0.0
+    s_detrend = s - np.mean(s)
+    power = np.mean(s_detrend ** 2)
+    mag = np.abs(np.fft.rfft(s_detrend))
+    noise_floor = np.median(mag ** 2)
+    snr_db = 10.0 * np.log10(power / noise_floor) if noise_floor > 0 else 0.0
+    return round(float(snr_db), 6)
+
+
 __all__ = [
     "dft",
     "dominant_bins",
@@ -181,4 +250,8 @@ __all__ = [
     "spectrogram_matrix",
     "autocorrelation",
     "estimate_pitch",
+    "dominant_frequency",
+    "power_spectral_density",
+    "spectral_entropy",
+    "estimate_snr",
 ]

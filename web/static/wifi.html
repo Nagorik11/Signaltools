@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignalTools — Analizador WiFi</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+.nav-bar { display: flex; gap: 1rem; align-items: center; justify-content: center; margin-top: 0.8rem; }
+.nav-bar a { color: var(--text-dim); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; transition: 0.2s; }
+.nav-bar a:hover { border-color: var(--accent); color: var(--accent); }
+.nav-bar a.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+
+.wifi-params { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.wifi-params label { font-size: 0.82rem; color: var(--text-dim); }
+.wifi-params select, .wifi-params input { background: #0a0b12; border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 0.3rem 0.5rem; font-size: 0.85rem; }
+.wifi-params input[type="number"] { width: 70px; font-family: var(--mono); }
+.wifi-params input[type="file"] { font-size: 0.82rem; color: var(--text-dim); }
+
+.channel-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.82rem; }
+.channel-row .ch-num { width: 2rem; color: var(--text-dim); font-family: var(--mono); }
+.channel-row .ch-bssid { width: 7rem; color: var(--text-dim); font-family: var(--mono); font-size: 0.7rem; }
+.channel-row .ch-freq { width: 4rem; color: var(--text-dim); }
+.channel-row .ch-bar-wrap { flex: 1; height: 14px; background: #0a0b12; border-radius: 3px; overflow: hidden; position: relative; }
+.channel-row .ch-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.channel-row .ch-bar.util { background: linear-gradient(90deg, #4ade80, #fbbf24, #f87171); }
+.channel-row .ch-bar.rssi { background: linear-gradient(90deg, #6c8cff, #a78bfa); }
+.channel-row .ch-val { width: 3.5rem; text-align: right; font-family: var(--mono); font-size: 0.78rem; }
+.channel-row .ch-val.short { width: 2.5rem; }
+.channel-row .ch-networks { font-size: 0.75rem; color: var(--text-dim); max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.metrics-wifi { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+.metric-wifi { background: rgba(10,11,18,0.6); border-radius: 8px; padding: 0.5rem; text-align: center; }
+.metric-wifi .val { font-family: var(--mono); font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+.metric-wifi .label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+.metric-wifi.good .val { color: var(--green); }
+.metric-wifi.warn .val { color: var(--orange); }
+.metric-wifi.bad .val { color: var(--red); }
+
+.spectrum-plot { position: relative; }
+.spectrum-plot canvas { display: block; }
+
+.channel-marker { position: absolute; bottom: 4px; font-size: 8px; color: rgba(255,255,255,0.3); text-align: center; transform: translateX(-50%); pointer-events: none; }
+
+.networks-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.networks-table th { text-align: left; color: var(--text-dim); font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.72rem; }
+.networks-table td { padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-family: var(--mono); font-size: 0.78rem; }
+.networks-table tr:hover td { background: rgba(255,255,255,0.02); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📶 SignalTools — WiFi</h1>
+  <p class="subtitle">Análisis de espectro inalámbrico, canales e interferencia</p>
+  <div class="nav-bar">
+    <a href="/">Analizador de señales</a>
+    <a href="/wifi" class="active">WiFi</a>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Escáner de canales WiFi</h2>
+    <div class="input-tabs">
+      <button class="tab-btn active" data-tab="synth">Simulación</button>
+      <button class="tab-btn" data-tab="pcap">Captura (PCAP)</button>
+    </div>
+
+    <div id="tab-synth" class="tab-content active">
+      <div class="wifi-params">
+        <label>Banda:</label>
+        <select id="wifi-band">
+          <option value="2.4GHz">2.4 GHz</option>
+          <option value="5GHz">5 GHz</option>
+        </select>
+        <label>Redes simuladas:</label>
+        <input type="number" id="wifi-networks" value="6" min="1" max="15">
+        <label>Ruido de fondo (dBm):</label>
+        <input type="number" id="wifi-noise" value="-95" min="-120" max="-60">
+        <button id="btn-scan" class="btn btn-primary">Escanear</button>
+      </div>
+    </div>
+
+    <div id="tab-pcap" class="tab-content">
+      <div class="wifi-params">
+        <label>Archivo PCAP:</label>
+        <input type="file" id="pcap-file" accept=".pcap,.pcapng,.cap">
+        <button id="btn-analyze-pcap" class="btn btn-primary">Analizar</button>
+        <span style="font-size:0.78rem;color:var(--text-dim);margin-left:0.5rem">
+          Captura con: <code style="background:#0a0b12;padding:0.1rem 0.3rem;border-radius:3px">tcpdump -i wlan0mon -c 30 -w capture.pcap</code>
+        </span>
+      </div>
+    </div>
+
+    <div id="scan-status" class="status">Listo</div>
+  </section>
+
+  <section id="results-section" class="hidden">
+    <div class="results-grid">
+      <!-- Metrics -->
+      <div class="card result-card wide" id="metrics-card">
+        <h2>Resumen de la red</h2>
+        <div class="metrics-wifi" id="wifi-metrics"></div>
+      </div>
+
+      <!-- Channel scan list -->
+      <div class="card result-card wide">
+        <h2>Canales</h2>
+        <div id="channel-list"></div>
+      </div>
+
+      <!-- Networks table (PCAP only) -->
+      <div class="card result-card wide hidden" id="networks-table-card">
+        <h2>Redes detectadas</h2>
+        <div id="networks-table-container"></div>
+      </div>
+
+      <!-- Spectrum -->
+      <div class="card result-card wide">
+        <h2>Espectro WiFi</h2>
+        <div class="spectrum-plot">
+          <canvas id="wifi-spectrum-canvas" height="200"></canvas>
+        </div>
+        <div id="wifi-spectrum-legend" class="spectrum-legend"></div>
+      </div>
+
+      <!-- Best channel recommendation -->
+      <div class="card result-card wide">
+        <h2>Recomendación</h2>
+        <div id="wifi-recommendation" class="interpretation"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/wifi.js"></script>
+</body>
+</html>

@@ -4,9 +4,20 @@
 # Core signal processing and I/O
 from .io import read_signal_file, guess_numeric_views, write_wav, read_wav, read_audio_file, Ingestor, SignalBuffer
 from .framing import FrameConfig, frame_signal, normalize_signal, detrend_mean, standardize_signal
-from .features import frame_feature_vector, first_derivative, second_derivative
+from .features import (
+    frame_feature_vector, first_derivative, second_derivative,
+    signal_power, rms, variance, signal_energy,
+    mean, stddev, zero_crossing_rate, crest_factor,
+    skewness, kurtosis, waveform_length, dynamic_range,
+)
 from .exceptions import SignalToolsError, SignalValidationError
 from .logging_utils import configure_logging, get_logger
+
+# Core signal objects
+from .core import Signal, SignalAnalyzer
+
+# AI/ML module
+from .ai import Learner
 
 # Spectral analysis and detection
 from .spectral import (
@@ -24,6 +35,10 @@ from .spectral import (
     spectrogram_matrix,
     autocorrelation,
     estimate_pitch,
+    dominant_frequency,
+    power_spectral_density,
+    spectral_entropy,
+    estimate_snr,
 )
 from .detect import threshold_events, adaptive_threshold, adaptive_events, local_peaks, anomaly_score, onset_strength
 
@@ -109,6 +124,12 @@ from .filter_banks import (
 
 # Modulation and fingerprinting
 from .modulate import amplitude_modulation, frequency_modulation
+
+from .neuro import (
+    DiffusionTensor, DiffusionKurtosis, fit_tensor, fit_dki, tensor_metrics, tensor_glyph, color_fa_map,
+    TractographyResult, Streamline, track_streamlines, bundle_centroid,
+    generate_synthetic_dwi, generate_crossing_fiber, generate_tensor_volume,
+)
 from .fingerprint import SignalFingerprint, fingerprint_engine, cosine_similarity, euclidean_distance, compare_fingerprints
 
 # Bridge and bitlayer analysis
@@ -131,6 +152,12 @@ from .pipeline import (
     PipelineResult,
     create_analysis_pipeline,
     create_preprocessing_pipeline,
+    create_spectral_feature_pipeline,
+    create_spectrogram_pipeline,
+    create_band_energy_pipeline,
+    create_full_spectral_pipeline,
+    create_stft_analysis_pipeline,
+    create_metrics_pipeline,
 )
 
 # Graph signal processing
@@ -412,11 +439,21 @@ __all__ = [
     "read_signal_file", "guess_numeric_views", "write_wav", "read_wav", "read_audio_file", "Ingestor", "SignalBuffer",
     "FrameConfig", "frame_signal", "normalize_signal", "detrend_mean", "standardize_signal",
     "frame_feature_vector", "first_derivative", "second_derivative",
+    "rms", "variance", "signal_energy", "signal_power",
+    "mean", "stddev", "zero_crossing_rate", "crest_factor",
+    "skewness", "kurtosis", "waveform_length", "dynamic_range",
+    
+    # Core signal objects
+    "Signal", "SignalAnalyzer",
+    
+    # AI/ML
+    "Learner",
     
     # Spectral analysis
     "dft", "dominant_bins", "spectral_energy", "spectral_flatness", "frequency_axis", "power_spectrum",
     "spectral_centroid", "spectral_bandwidth", "spectral_rolloff", "band_energy", "stft", "spectrogram_matrix",
     "autocorrelation", "estimate_pitch",
+    "dominant_frequency", "power_spectral_density", "spectral_entropy", "estimate_snr",
     
     # Detection
     "threshold_events", "adaptive_threshold", "adaptive_events", "local_peaks", "anomaly_score", "onset_strength",
@@ -459,6 +496,9 @@ __all__ = [
     "AdvancedSignalAnalysis", "analyze_signal_advanced",
     "ProcessingPipeline", "PipelineStep", "PipelineResult",
     "create_analysis_pipeline", "create_preprocessing_pipeline",
+    "create_spectral_feature_pipeline", "create_spectrogram_pipeline",
+    "create_band_energy_pipeline", "create_full_spectral_pipeline",
+    "create_stft_analysis_pipeline", "create_metrics_pipeline",
     
     # Graph signal processing
     "graph_laplacian", "graph_fourier_basis", "graph_filter_signal", "graph_polynomial_filter",
@@ -530,9 +570,14 @@ __all__ = [
     "ForensicImageAnalysisResult", "ForensicImageBundlePaths", "forensic_decompose_image",
     
     # Image morphology (2D/3D)
-    "dilation_2d", "erosion_2d", "opening_2d", "closing_2d", "median_filter_2d", "morphological_gradient_2d",
+    "dilation_2d", "erosion_2d", "opening_2d", "closing_2d",     "median_filter_2d", "morphological_gradient_2d",
     "dilation_3d", "erosion_3d", "opening_3d", "closing_3d", "median_filter_3d", "morphological_gradient_3d",
     "dilation_3d_kernel", "erosion_3d_kernel", "opening_3d_kernel", "closing_3d_kernel",
+
+    # Neuroimaging (dMRI + tractography)
+    "DiffusionTensor", "DiffusionKurtosis", "fit_tensor", "fit_dki", "tensor_metrics", "tensor_glyph", "color_fa_map",
+    "TractographyResult", "Streamline", "track_streamlines", "bundle_centroid",
+    "generate_synthetic_dwi", "generate_crossing_fiber", "generate_tensor_volume",
     
     # Complex-valued deep learning
     "ComplexChannelResult", "analytic_signal_multichannel", "complex_channel_mix",
